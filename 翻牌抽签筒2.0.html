@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3x3 翻牌游戏（优化版）</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        .input-container {
+            margin: 20px 0;
+        }
+
+        input {
+            padding: 8px;
+            width: 200px;
+            margin-right: 10px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            margin: 0 5px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 120px);
+            grid-template-rows: repeat(3, 120px);
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+            height: 390px;
+            position: relative;
+        }
+
+        .card-container {
+            perspective: 1000px;
+            position: absolute;
+            transition: all 0.5s ease-out;
+        }
+
+        .card {
+            width: 120px;
+            height: 120px;
+            position: relative;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .card-front {
+            background-color: #fff;
+            color: #333;
+            font-size: 18px;
+            font-weight: bold;
+            transform: rotateY(180deg);
+        }
+
+        .card-back {
+            background-color: #2c3e50;
+            color: white;
+            font-size: 24px;
+            border: 2px solid #34495e;
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .shuffling {
+            transition: none !important;
+        }
+
+        @keyframes stack {
+            0% { transform: scale(1) rotate(0deg); }
+            100% { transform: scale(0.7) rotate(5deg); }
+        }
+
+        .stacked {
+            animation: stack 0.8s forwards;
+        }
+    </style>
+</head>
+<body>
+    <h1>3x3 翻牌游戏</h1>
+    <div class="input-container">
+        <input type="text" id="cardInput" placeholder="输入牌面内容（按顺序设置9张）">
+        <button id="setCard">设置牌面</button>
+        <button id="shuffle">洗牌</button>
+    </div>
+    <div class="grid-container" id="gridContainer">
+        <!-- 牌会动态生成 -->
+    </div>
+
+    <script>
+        const gridContainer = document.getElementById('gridContainer');
+        const cardInput = document.getElementById('cardInput');
+        const setCardBtn = document.getElementById('setCard');
+        const shuffleBtn = document.getElementById('shuffle');
+
+        let cards = [];
+        let currentSetIndex = 0;
+        const totalCards = 9;
+        const targetPositions = [
+            {x: 0, y: 0},    {x: 135, y: 0},   {x: 270, y: 0},
+            {x: 0, y: 135},   {x: 135, y: 135}, {x: 270, y: 135},
+            {x: 0, y: 270},   {x: 135, y: 270}, {x: 270, y: 270}
+        ];
+
+        function initCards() {
+            gridContainer.innerHTML = '';
+            cards = [];
+            for (let i = 0; i < totalCards; i++) {
+                const container = document.createElement('div');
+                container.className = 'card-container';
+                container.style.left = `${targetPositions[i].x}px`;
+                container.style.top = `${targetPositions[i].y}px`;
+                
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.dataset.index = i;
+
+                const front = document.createElement('div');
+                front.className = 'card-front';
+                front.textContent = `牌${i+1}`;
+
+                const back = document.createElement('div');
+                back.className = 'card-back';
+                back.textContent = '?';
+
+                card.appendChild(front);
+                card.appendChild(back);
+                container.appendChild(card);
+                gridContainer.appendChild(container);
+
+                card.addEventListener('click', () => {
+                    if (!card.classList.contains('flipped') && !card.classList.contains('shuffling')) {
+                        card.classList.add('flipped');
+                    }
+                });
+
+                cards.push({
+                    container: container,
+                    card: card,
+                    front: front
+                });
+            }
+        }
+
+        setCardBtn.addEventListener('click', () => {
+            const content = cardInput.value.trim();
+            if (content && currentSetIndex < totalCards) {
+                cards[currentSetIndex].front.textContent = content;
+                cards[currentSetIndex].card.classList.add('flipped');
+                currentSetIndex++;
+                cardInput.value = '';
+            } else if (currentSetIndex >= totalCards) {
+                alert('所有牌已设置完毕！');
+            } else {
+                alert('请输入牌面内容！');
+            }
+        });
+
+        shuffleBtn.addEventListener('click', () => {
+            cards.forEach(item => {
+                item.card.classList.remove('flipped');
+            });
+
+            let shuffleInterval = setInterval(() => {
+                cards.forEach(item => {
+                    item.container.classList.add('shuffling');
+                    const randomX = Math.floor(Math.random() * 300);
+                    const randomY = Math.floor(Math.random() * 300);
+                    item.container.style.left = `${randomX}px`;
+                    item.container.style.top = `${randomY}px`;
+                    const randomRotate = Math.floor(Math.random() * 40) - 20;
+                    item.container.style.transform = `rotate(${randomRotate}deg)`;
+                });
+            }, 80);
+
+            setTimeout(() => {
+                clearInterval(shuffleInterval);
+                cards.forEach((item, index) => {
+                    item.container.classList.remove('shuffling');
+                    item.container.classList.add('stacked');
+                    item.container.style.left = `135px`;
+                    item.container.style.top = `135px`;
+                    item.container.style.transform = `rotate(${5 + index * 2}deg)`;
+                });
+
+                setTimeout(() => {
+                    const shuffledIndices = Array.from({length: totalCards}, (_, i) => i)
+                        .sort(() => Math.random() - 0.5);
+
+                    cards.forEach(item => {
+                        item.container.classList.remove('stacked');
+                        item.container.style.transform = 'rotate(0deg)';
+                    });
+
+                    shuffledIndices.forEach((originalIndex, newIndex) => {
+                        const target = targetPositions[newIndex];
+                        const item = cards[originalIndex];
+                        item.container.style.left = `${target.x}px`;
+                        item.container.style.top = `${target.y}px`;
+                    });
+
+                }, 1000);
+
+            }, 1000);
+        });
+
+        initCards();
+    </script>
+</body>
+</html>
